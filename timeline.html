@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Water Storage Stations across Australia</title>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:16px; }
+  </style>
+</head>
+<body>
+  <h1>Water Storage Stations across Australia</h1>
+  <div id="vis"></div>
+
+  <script>
+    /*
+      IMPORTANT: If you open this HTML directly from disk (file://...), most browsers
+      will block loading the CSV for security reasons. Run a tiny local server instead:
+
+      Option A (VS Code): Right-click -> "Open with Live Server"
+      Option B (Python):  python -m http.server 5500
+      then visit: http://localhost:5500/WaterStorage_line.html
+    */
+
+    const specLine = {
+      $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+      width: 1024,
+      height: 420,
+      data: {
+        url: "australia_rainfall.csv",  // keep in same folder
+        format: { type: "csv" }
+      },
+      transform: [
+        /* Coerce rainfall to number (avoid strings blocking the y-encoding) */
+        { calculate: "toNumber(datum.Rainfall_mm)", as: "RainfallNum" },
+
+        /* Build a robust MonthDate:
+           - If Year and Month are numeric (1..12): use datetime(Year, Month-1, 1)
+           - Else if Month looks like 'YYYY-MM': use toDate(Month + '-01')
+           - Else if Month is like 'Jan' and Year exists: use toDate(Month + ' 1, ' + Year)
+           - Else fallback to toDate(Month)
+        */
+        {
+          calculate:
+            "isValid(datum.Year) && isValid(datum.Month) && toNumber(datum.Month)>=1 && toNumber(datum.Month)<=12" +
+            "  ? datetime(toNumber(datum.Year), toNumber(datum.Month)-1, 1)" +
+            "  : (isString(datum.Month) && indexof(datum.Month,'-')==4" + // 'YYYY-MM'
+            "      ? toDate(datum.Month + '-01')" +
+            "      : (isString(datum.Month) && isValid(datum.Year)" +
+            "          ? toDate(datum.Month + ' 1, ' + datum.Year)" +     // e.g., 'Jan' + Year
+            "          : toDate(datum.Month)" +
+            "        )" +
+            "    )",
+          as: "MonthDate"
+        },
+
+        /* Optional: drop rows without usable date or rainfall */
+        { filter: "isValid(datum.MonthDate) && isFinite(datum.RainfallNum)" }
+      ],
+      mark: { type: "line", point: true },
+      encoding: {
+        x: { field: "MonthDate", type: "temporal", title: "Year" },
+        y: { field: "RainfallNum", type: "quantitative", title: "Rainfall (mm)" },
+        color: { field: "State", type: "nominal", title: "State" },
+        tooltip: [
+          { field: "State" },
+          { field: "MonthDate", type: "temporal", title: "Year" },
+          { field: "RainfallNum", type: "quantitative", format: ".1f", title: "Rainfall (mm)" }
+        ]
+      }
+    };
+
+    vegaEmbed("#vis", specLine, { actions: false })
+      .catch(err => {
+        console.error("Vega-Embed Error:", err);
+        const msg = document.createElement('pre');
+        msg.textContent = 'Failed to load data. If you opened this file from disk, run a local server.\n' +
+                          'Example: python -m http.server 5500';
+        document.body.appendChild(msg);
+      });
+  </script>
+</body>
+</html>

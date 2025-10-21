@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Australia Rainfall Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 18px; }
+    #vis { max-width: 1100px; }
+  </style>
+</head>
+<body>
+  <h2>Australia Rainfall Test</h2>
+  <div id="vis"></div>
+
+<script>
+const spec = {
+  $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+  width: 1000, 
+  height: 620,
+  view: { stroke: null },
+  projection: { type: "mercator", center: [133.5, -28], scale: 900 },
+
+  data: {
+    url: "./ne_50m_admin_1_states_provinces.topojson",
+    format: { type: "topojson", feature: "ne_50m_admin_1_states_provinces" }
+  },
+
+  transform: [
+    { filter: "datum.properties && datum.properties.admin == 'Australia'" },
+    {
+      lookup: "properties.iso_3166_2",
+      from: {
+        data: { 
+          values: [
+            {"state_code": "AU-NSW", "avg_rainfall": 120.5},
+            {"state_code": "AU-QLD", "avg_rainfall": 95.3},
+            {"state_code": "AU-VIC", "avg_rainfall": 110.2},
+            {"state_code": "AU-WA", "avg_rainfall": 85.7},
+            {"state_code": "AU-SA", "avg_rainfall": 75.4},
+            {"state_code": "AU-TAS", "avg_rainfall": 140.8},
+            {"state_code": "AU-NT", "avg_rainfall": 45.2},
+            {"state_code": "AU-ACT", "avg_rainfall": 85.1}
+          ]
+        },
+        key: "state_code",
+        fields: ["avg_rainfall"]
+      }
+    }
+  ],
+
+  mark: { 
+    type: "geoshape", 
+    stroke: "#6b6b6b", 
+    strokeWidth: 0.6 
+  },
+
+  encoding: {
+    color: {
+      condition: {
+        test: "isValid(datum.avg_rainfall)",
+        field: "avg_rainfall", 
+        type: "quantitative",
+        title: "Avg rainfall (mm)", 
+        scale: { scheme: "blues" }
+      },
+      value: "#ffd6e0"
+    },
+    tooltip: [
+      { field: "properties.name", title: "State" },
+      { field: "properties.iso_3166_2", title: "Code" },
+      { field: "avg_rainfall", title: "Avg Rainfall", format: ".1f" }
+    ]
+  }
+};
+
+vegaEmbed("#vis", spec, { actions: false });
+</script>
+
+</body>
+</html>
